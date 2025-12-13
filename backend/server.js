@@ -27,11 +27,15 @@ app.get("/api/getImage", (req, res) => {
   res.json({ file: fileName });
 });
 
-// Multer temp folder setup
+// Multer temp folder setup (safe even if folder already exists)
 const tempDir = path.join(__dirname, "temp_uploads");
-if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
+fs.mkdirSync(tempDir, { recursive: true });
 
-const upload = multer({ dest: tempDir });
+// Multer config (optional: limit size to 5MB)
+const upload = multer({
+  dest: tempDir,
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
 
 // POST /api/upload?name=tom (form-data field name must be "image")
 app.post("/api/upload", upload.single("image"), (req, res) => {
@@ -41,17 +45,34 @@ app.post("/api/upload", upload.single("image"), (req, res) => {
   if (!ALLOWED.has(name)) return res.status(400).json({ error: "Allowed: tom, jerry, dog" });
   if (!req.file) return res.status(400).json({ error: "No file uploaded. Field must be 'image'." });
 
+  // Optional safety: ensure uploaded file is an image
+  // (Keeps assignment behavior, just prevents uploading non-images)
+  if (!req.file.mimetype || !req.file.mimetype.startsWith("image/")) {
+    try {
+      fs.unlinkSync(req.file.path); // delete temp file
+    } catch {}
+    return res.status(400).json({ error: "Uploaded file must be an image." });
+  }
+
   // Assignment requirement: fixed filename like tom.jpg, jerry.jpg, dog.jpg
   const fixedFileName = `${name}.jpg`;
   const destPath = path.join(__dirname, "public", fixedFileName);
 
-  // Overwrite existing
-  fs.renameSync(req.file.path, destPath);
-
-  res.json({ message: "Upload successful", file: fixedFileName });
+  try {
+    // Overwrite existing by moving temp file into /public
+    fs.renameSync(req.file.path, destPath);
+    res.json({ message: "Upload successful", file: fixedFileName });
+  } catch (err) {
+    console.error(err);
+    // Clean up temp file if rename failed
+    try {
+      if (req.file?.path && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    } catch {}
+    res.status(500).json({ error: "Upload failed" });
+  }
 });
 
-// Start server
+// Start server (keep alive)
 app.listen(PORT, () => {
   console.log(`Backend running at http://localhost:${PORT}`);
 });
