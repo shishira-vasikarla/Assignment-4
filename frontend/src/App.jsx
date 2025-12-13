@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import "./styles.css";
 
-// Backend base URL (images are served from backend, not Vite)
-const BACKEND_URL = "http://localhost:3000";
+const allowed = ["tom", "jerry", "dog"];
 
 export default function App() {
   const [searchName, setSearchName] = useState("tom");
@@ -20,7 +19,7 @@ export default function App() {
     setImageUrl("");
 
     if (!normalizedSearch) {
-      setStatus({ type: "error", text: "Enter a character name (example: tom, jerry, dog)." });
+      setStatus({ type: "error", text: "Enter a character name (tom/jerry/dog)." });
       return;
     }
 
@@ -33,8 +32,8 @@ export default function App() {
         return;
       }
 
-      // Load image from backend static server + cache-bust
-      setImageUrl(`${BACKEND_URL}/${data.file}?t=${Date.now()}`);
+      // IMPORTANT: cache-bust so new uploads show immediately
+      setImageUrl(`/${data.file}?t=${Date.now()}`);
       setStatus({ type: "success", text: `Showing: ${data.file}` });
     } catch {
       setStatus({ type: "error", text: "Search error (is backend running on :3000?)" });
@@ -45,7 +44,7 @@ export default function App() {
     setStatus({ type: "", text: "" });
 
     if (!normalizedUpload) {
-      setStatus({ type: "error", text: "Enter a character name to replace (example: tom)." });
+      setStatus({ type: "error", text: "Enter a character name to replace." });
       return;
     }
     if (!file) {
@@ -68,11 +67,11 @@ export default function App() {
         return;
       }
 
-      setStatus({ type: "success", text: `✅ ${data.action} ${data.file}` });
+      setStatus({ type: "success", text: `✅ Upload successful: replaced ${data.file}` });
 
-      // If you uploaded for the same name you are searching, refresh the preview
+      // Optional auto refresh if you replaced the currently searched character
       if (normalizedUpload === normalizedSearch) {
-        setImageUrl(`${BACKEND_URL}/${data.file}?t=${Date.now()}`);
+        setImageUrl(`/${data.file}?t=${Date.now()}`);
       }
 
       setFile(null);
@@ -88,22 +87,14 @@ export default function App() {
           <h1>Character Image Manager</h1>
           <p className="subtitle">Search and replace images without restarting the server.</p>
         </div>
-
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {["tom", "jerry", "dog"].map((x) => (
-            <span
-              key={x}
-              style={{
-                fontSize: 12,
-                padding: "6px 10px",
-                border: "1px solid rgba(255,255,255,.10)",
-                background: "rgba(255,255,255,.05)",
-                borderRadius: 999,
-                color: "#aab6e8",
-              }}
-            >
-              {x}
-            </span>
+          {allowed.map((x) => (
+            <span key={x} style={{
+              fontSize: 12, padding: "6px 10px",
+              border: "1px solid rgba(255,255,255,.10)",
+              background: "rgba(255,255,255,.05)",
+              borderRadius: 999, color: "#aab6e8"
+            }}>{x}</span>
           ))}
         </div>
       </header>
@@ -118,9 +109,7 @@ export default function App() {
               onChange={(e) => setSearchName(e.target.value)}
               placeholder="tom"
             />
-            <button className="btn" onClick={handleSearch}>
-              Search
-            </button>
+            <button className="btn" onClick={handleSearch}>Search</button>
           </div>
 
           <div className="preview">
@@ -135,8 +124,7 @@ export default function App() {
         <section className="card">
           <h2>2) Upload / Replace Image</h2>
           <p className="hint">
-            Enter a character name (example: <b>tom</b>) and upload an image. The server will save it as{" "}
-            <b>{`<name>.jpg`}</b> inside <code>backend/public</code> and overwrite if it already exists.
+            Upload a new file to overwrite <b>tom.jpg</b>, <b>jerry.jpg</b>, or <b>dog.jpg</b> in the backend <code>/public</code>.
           </p>
 
           <div className="stack">
