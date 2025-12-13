@@ -68,7 +68,7 @@ export default function App() {
         return;
       }
 
-      setStatus({ type: "success", text: `✅ Upload successful: replaced ${data.file}` });
+      setStatus({ type: "success", text: `✅ ${data.action} ${data.file}` });
 
       // If you uploaded for the same name you are searching, refresh the preview
       if (normalizedUpload === normalizedSearch) {
